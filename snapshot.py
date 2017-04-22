@@ -52,7 +52,7 @@ class block():
 
 	def __init__(self, time, c=50, record=None, u=0.2):
 		# record is a list of[oid, start_time, end_time]
-		self.time_inveral =[time,'*']
+		self.time_inveral = [time,'*']
 		self.capacity = c
 		self.u = u
 		if(record):
@@ -66,6 +66,7 @@ class block():
 		# a flag to show if the block is full or not
 		self.isfull = False
 		# another flag to show if the block is underflow or not
+		# underflow also shows if the block is useful or not
 		self.isunderflow = False
 			
 	def insert(self, record):
@@ -96,9 +97,10 @@ class block():
 
 	def delete_block(self, end_time):
 		if(self.isunderflow):
+			self.time_inveral[1] = end_time
 			for entry in self.record_list:
 				if(entry[2] == '*'):
-					entry[2] == end_time
+					entry[2] = end_time
 
 
 
@@ -150,6 +152,7 @@ class Snapshot():
 			# no need to create new node
 			self.insert(new_record)
 
+	# timeslice query interface
 	def query(self, time):
 		pass
 
