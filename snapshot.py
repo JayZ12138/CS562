@@ -135,15 +135,19 @@ class Snapshot():
 		node.block.delete(oid, end_time)
 		if(node.block.isunderflow):
 			# copy the alive entires to the new block
+			# new node creation is automatic in the insert process, as only full
+			# block will be in underflow condition and insert process will create
+			# new acceptor block if block is full
 			self.copy(node.block.alives_inblock(), end_time)
 			# change the end_time of the alive entries in block to current time
-			self.node.block.delete_block(end_time)
+			node.block.delete_block(end_time)
 			# delete the node in the doubly linked list
 			self.blocks.delete(node)
 
 	def copy(self, records, time):
 		for record in records:
 			new_record = list(record[0], time, '*')
+			# no need to create new node
 			self.insert(new_record)
 
 	def query(self, time):
