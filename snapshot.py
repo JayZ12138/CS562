@@ -55,7 +55,10 @@ class block():
 		self.time_inveral =[time,'*']
 		self.capacity = c
 		self.u = u
-		self.record_list = [record]
+		if(record):
+			self.record_list = [record]
+		else:
+			self.record_list = []
 		# Used memory
 		self.usage = len(self.record_list)
 		# an integer to show the number of alive entries
@@ -80,6 +83,7 @@ class block():
 				if(self.ifull and self.alive_records<self.u*self.capacity):
 					self.isunderflow = True
 				return
+		# if no record is founed
 		print('cannot find the record')
 
 	# for the copy procedure, we need to get all the entries first
@@ -101,16 +105,16 @@ class block():
 class Snapshot():
 
 	# record format is [oid, start_time, end_time]
-	def __init__(self, record): # start by insert an record
+	def __init__(self, r): # start by inserting an record
 		self.blocks = Linked_list()
 		# insert a new block and set it as acceptor
-		new_block = block(time=record[1])
+		new_block = block(time=r[1], record=r)
 		self.blocks.insert(Node(blk=new_block))
 		self.acceptor = self.blocks.last_node.block
 		# entry in AT array is in format (t, pointer_to_node_in_linkedlist)
-		self.AT = [(record[1], self.blocks.last_node)]
+		self.AT = [(r[1], self.blocks.last_node)]
 		# record all alive entries, formart is {oid, pointer_to_node_in_linkedlist}
-		self.alives_entries = {record[0]:self.blocks.last_node}
+		self.alives_entries = {r[0]:self.blocks.last_node}
 
 	def insert(self, record):
 		if(self.acceptor.isfull):
