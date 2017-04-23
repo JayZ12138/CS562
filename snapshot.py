@@ -185,11 +185,12 @@ class Snapshot():
 		# 	result += Snapshot.gocheck_right(cur_node.next_node, time, checked)	
 		if(cur_node.Pce_node):
 			result += Snapshot.gocheck_down(cur_node.Pce_node, time, checked)			
-		# Return records.
+		# Remove duplicates and return result as a set
+		result = set(result)
 		return result
 
 	@classmethod
-	def check_node(cls, node, t, checked):
+	def check_node(cls, node, t, checked=None):
 		result = []
 		t_s, t_e = node.block.time_interval
 		if(t_s>t or t_e <t):
@@ -197,10 +198,10 @@ class Snapshot():
 		for re in node.block.record_list:
 			if(re[2] == '*'):
 				if(re[1]<=t):
-					result.append(re)
+					result.append(re[0])
 			else:
 				if(re[1]<=t and re[2]>=t):
-					result.append(re)
+					result.append(re[0])
 		# record the checked node, so won't be double checked
 		checked.append(node.block.id)
 		return result
