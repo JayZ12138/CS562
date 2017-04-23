@@ -178,7 +178,7 @@ class Snapshot():
 		if(cur_node.previous_node):
 			result += Snapshot.gocheck_left(cur_node.previous_node, time, checked)
 		if(cur_node.next_node):
-			result += Snapshot.gocheck_left(cur_node.next_node, time, checked)		
+			result += Snapshot.gocheck_right(cur_node.next_node, time, checked)		
 		# Return records.
 		return result
 
