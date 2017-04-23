@@ -154,7 +154,7 @@ class Snapshot():
 			# no need to create new node
 			self.insert(new_record)
 
-	# timeslice query interface
+	# timeslice query interface, get the records alive in some time instant
 	def query(self, time):
 		cur_node = None
 		# get the acceptor block at the required time by the AT array
@@ -169,16 +169,22 @@ class Snapshot():
 				return []
 			else:
 				cur_node = self.AT[-1][0]
-		#start checking
+		# start visitation. The visitation pattern is this node-->up node, left node,
+		# right node, children in parallel and left arrow keeps checking left and down
+		# right arrow keeps checking right and down, up keeps checking up, left, right
 		result = Snapshot.check_node(cur_node, time, [])
+		# Use a list to record the checked nodes
 		checked = [cur_node.block.id]
 		# Now, go up, left, down,.. from the current node.
 		if(cur_node.parent_node):
 			result += Snapshot.gocheck_up(cur_node.parent_node, time, checked)
 		if(cur_node.previous_node):
 			result += Snapshot.gocheck_left(cur_node.previous_node, time, checked)
-		if(cur_node.next_node):
-			result += Snapshot.gocheck_right(cur_node.next_node, time, checked)		
+		# There should be no need to check the right sibling
+		# if(cur_node.next_node):
+		# 	result += Snapshot.gocheck_right(cur_node.next_node, time, checked)	
+		if(cur_node.Pce_node):
+			result += Snapshot.gocheck_down(cur_node.Pce_node, time, checked)			
 		# Return records.
 		return result
 
@@ -211,10 +217,10 @@ class Snapshot():
 			t_s, t_e = node.previous_node.time_interval
 			if(t_s<=t and t_e>=t):
 				result += cls.gocheck_left(node.previous_node, t, checked)
-		if(node.next_node and node.next_node.block.id not in checked):
-			t_s, t_e = node.next_node.time_interval
-			if(t_s<=t and t_e>=t):
-				result += cls.gocheck_right(node.next_node, t, checked)
+		# if(node.next_node and node.next_node.block.id not in checked):
+		# 	t_s, t_e = node.next_node.time_interval
+		# 	if(t_s<=t and t_e>=t):
+		# 		result += cls.gocheck_right(node.next_node, t, checked)
 		return result
 
 	@classmethod
@@ -225,10 +231,6 @@ class Snapshot():
 			t_s, t_e = node.previous_node.time_interval
 			if(t_s<=t and t_e>=t):
 				result += cls.gocheck_left(node.previous_node, t, checked)
-		if(node.next_node and node.next_node.block.id not in checked):
-			t_s, t_e = node.next_node.time_interval
-			if(t_s<=t and t_e>=t):
-				result += cls.gocheck_right(node.next_node, t, checked)
 		if(node.Pce_node and node.Pce_node.block.id not in checked):
 			t_s, t_e = node.Pce_node.time_interval
 			if(t_s<=t and t_e>=t):
@@ -265,11 +267,13 @@ class Snapshot():
 				result += cls.gocheck_down(node.Pce_node, t, checked)
 		return result
 
-	def rangeq(self, time_range):
+	# range query interface, get the records between time period
+	def rangeq(self, t_min, t_max):
 		pass
 
-	def keyq(self, oid):
-		pass
+	# get the records with particular object id
+	# def keyq(self, oid):
+	# 	pass
 
 
 	
