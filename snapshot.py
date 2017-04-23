@@ -1,3 +1,4 @@
+from uuid import uuid1
 class Node():
 
 	def __init__(self, parent_node=None, next_node=None, previous_node=None,
@@ -50,15 +51,15 @@ class Linked_list():
 
 class block():
 
-	def __init__(self, time, c=50, record=None, u=0.2):
+	def __init__(self, record, c=50, u=0.2):
 		# record is a list of[oid, start_time, end_time]
-		self.time_inveral = [time,'*']
+		# add requisite here: there must be a record while creating 
+		# new block
+		self.id = uuid1()
+		self.time_interval = [record[0], '*']
 		self.capacity = c
 		self.u = u
-		if(record):
-			self.record_list = [record]
-		else:
-			self.record_list = []
+		self.record_list = [record]
 		# Used memory
 		self.usage = len(self.record_list)
 		# an integer to show the number of alive entries
@@ -97,7 +98,7 @@ class block():
 
 	def delete_block(self, end_time):
 		if(self.isunderflow):
-			self.time_inveral[1] = end_time
+			self.time_interval[1] = end_time
 			for entry in self.record_list:
 				if(entry[2] == '*'):
 					entry[2] = end_time
@@ -110,7 +111,7 @@ class Snapshot():
 	def __init__(self, r): # start by inserting an record
 		self.blocks = Linked_list()
 		# insert a new block and set it as acceptor
-		new_block = block(time=r[1], record=r)
+		new_block = block(record=r)
 		self.blocks.insert(Node(blk=new_block))
 		self.acceptor = self.blocks.last_node.block
 		# entry in AT array is in format (t, pointer_to_node_in_linkedlist)
@@ -118,18 +119,18 @@ class Snapshot():
 		# record all alive entries, formart is {oid, pointer_to_node_in_linkedlist}
 		self.alives_entries = {r[0]:self.blocks.last_node}
 
-	def insert(self, record):
+	def insert(self, r):
 		if(self.acceptor.isfull):
-			new_block = block(time=record[1])
+			new_block = block(record=r)
 			self.blocks.insert(Node(blk=new_block))
 			# set the acceptor block to the newly inserted block
 			self.acceptor = self.blocks.last_node.block 
 			# append the (time, block) to the AT array
-			self.AT.append((record[1], self.blocks.last_node))
-			self.insert(record)
+			self.AT.append((r[1], self.blocks.last_node))
+			self.insert(r)
 		else:
-			self.acceptor.insert(record)
-			self.alives_entries[record[0]] = self.blocks.last_node
+			self.acceptor.insert(r)
+		self.alives_entries[r[0]] = self.blocks.last_node
 
 	def delete(self, oid, end_time):
 		# use hash to find the node first and then delete
@@ -154,9 +155,115 @@ class Snapshot():
 
 	# timeslice query interface
 	def query(self, time):
-		pass
+		cur_node = None
+		# get the acceptor block at the required time by the AT array
+		# want the largest t <= time
+		for i in range(len(self.AT)):
+			if(self.AT[i][0]<=time and self.AT[i+1][0]>time):
+				cur_node = self.AT[i][1]
+				break
+		# if didn't find, consider two situations:
+		else:
+			if(self.AT[0][0]>time):
+				return []
+			else:
+				cur_node = self.AT[-1][0]
+		#start checking
+		result = Snapshot.check_node(cur_node, time, [])
+		checked = [cur_node.block.id]
+		# Now, go up, left, down,.. from the current node.
+		if(cur_node.parent_node):
+			result += Snapshot.gocheck_up(cur_node.parent_node, time, checked)
+		if(cur_node.previous_node):
+			result += Snapshot.gocheck_left(cur_node.previous_node, time, checked)
+		if(cur_node.next_node):
+			result += Snapshot.gocheck_left(cur_node.next_node, time, checked)		
+		# Return records.
+		return result
 
-	def rangeq(self, time_interval):
+	@classmethod
+	def check_node(cls, node, t, checked):
+		result = []
+		t_s, t_e = node.block.time_interval
+		if(t_s>t or t_e <t):
+			return result
+		for re in node.block.record_list:
+			if(re[2] == '*'):
+				if(re[1]<=t):
+					result.append(re)
+			else:
+				if(re[1]<=t and re[2]>=t):
+					result.append(re)
+		# record the checked node, so won't be double checked
+		checked.append(node.block.id)
+		return result
+
+	@classmethod
+	def gocheck_up(cls, node, t, checked):
+		result = []
+		result += cls.check_node(node, t, checked)
+		# if there is parent node, keep going up and checking
+		if(node.parent_node and node.parent_node.block.id not in checked):
+			# No need to check interval, as upper node is what we always need
+			result += cls.gocheck_up(node.parent_node, t, checked)
+		if(node.previous_node and node.previous_node.block.id not in checked):
+			t_s, t_e = node.previous_node.time_interval
+			if(t_s<=t and t_e>=t):
+				result += cls.gocheck_left(node.previous_node, t, checked)
+		if(node.next_node and node.next_node.block.id not in checked):
+			t_s, t_e = node.next_node.time_interval
+			if(t_s<=t and t_e>=t):
+				result += cls.gocheck_right(node.next_node, t, checked)
+		return result
+
+	@classmethod
+	def gocheck_left(cls, node, t, checked):
+		result = []
+		result += cls.check_node(node, t, checked)
+		# check the left sibling node:
+		if(node.previous_node and node.previous_node.block.id not in checked):
+			t_s, t_e = node.previous_node.time_interval
+			if(t_s<=t and t_e>=t):
+				result += cls.gocheck_left(node.previous_node, t, checked)
+		if(node.Pce_node and node.Pce_node.block.id not in checked):
+			t_s, t_e = node.Pce_node.time_interval
+			if(t_s<=t and t_e>=t):
+				result += cls.gocheck_down(node.Pce_node, t, checked)
+		return result
+
+	@classmethod
+	def gocheck_right(cls, node, t, checked):
+		result = []
+		result += cls.check_node(node, t, checked)
+		# check the left sibling node:
+		if(node.next_node and node.next_node.block.id not in checked):
+			t_s, t_e = node.next_node.time_interval
+			if(t_s<=t and t_e>=t):
+				result += cls.gocheck_right(node.next_node, t, checked)
+		if(node.Pce_node and node.Pce_node.block.id not in checked):
+			t_s, t_e = node.Pce_node.time_interval
+			if(t_s<=t and t_e>=t):
+				result += cls.gocheck_down(node.Pce_node, t, checked)
+		return result
+
+	@classmethod
+	def gocheck_down(cls, node, t, checked):
+		result = []
+		result += cls.check_node(node, t, checked)
+		if(node.next_node and node.next_node.block.id not in checked):
+			t_s, t_e = node.next_node.time_interval
+			if(t_s<=t and t_e>=t):
+				result += cls.gocheck_right(node.next_node, t, checked)
+		if(node.previous_node and node.previous_node.block.id not in checked):
+			t_s, t_e = node.previous_node.time_interval
+			if(t_s<=t and t_e>=t):
+				result += cls.gocheck_left(node.previous_node, t, checked)
+		if(node.Pce_node and node.Pce_node.block.id not in checked):
+			t_s, t_e = node.Pce_node.time_interval
+			if(t_s<=t and t_e>=t):
+				result += cls.gocheck_down(node.Pce_node, t, checked)
+		return result
+	def rangeq(self, time_range):
 		pass
 
 	def keyq(self, oid):
