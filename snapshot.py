@@ -55,6 +55,7 @@ class block():
 		# record is a list of[oid, start_time, end_time]
 		# add requisite here: there must be a record while creating 
 		# new block
+		# use a unique random id to represent the block
 		self.id = uuid1()
 		self.time_interval = [record[0], '*']
 		self.capacity = c
@@ -170,11 +171,11 @@ class Snapshot():
 			else:
 				cur_node = self.AT[-1][1]
 		# start visitation. The visitation pattern is this node-->up node, left node,
-		# right node, children in parallel and left arrow keeps checking left and down
-		# right arrow keeps checking right and down, up keeps checking up, left, right
-		result = Snapshot.check_node(cur_node, time, [])
+		# children in parallel and left arrow keeps checking left and down
+		# up keeps checking up, left, no need to check right
 		# Use a list to record the checked nodes
-		checked = [cur_node.block.id]
+		checked = []
+		result = Snapshot.check_node(cur_node, time, checked)
 		# Now, go up, left, down,.. from the current node.
 		if(cur_node.parent_node):
 			result += Snapshot.gocheck_up(cur_node.parent_node, time, checked)
@@ -249,6 +250,9 @@ class Snapshot():
 				result += cls.gocheck_down(node.Pce_node, t, checked)
 		return result
 
+	# There is always no need to check right. As while checking the children
+	# The checking process is always start from right most, in the process of 
+	# up checking, it is fundamentally no suitable records in the right sibling
 	# @classmethod
 	# def gocheck_right(cls, node, t, checked):
 	# 	result = []
@@ -267,7 +271,8 @@ class Snapshot():
 	# range query interface, get the records between time period
 	# t_min must <= t_max
 	def trquery(self, t_min, t_max):
-		# get the acceptor bigger block from AT array
+		# checking process starts from the t_max to t_min, ease the process
+		# get the acceptor block of t_max from AT array
 		max_node = None
 		for i in range(len(self.AT)):
 			if(self.AT[i][0]<=t_max and self.AT[i+1][0]>t_max):
@@ -280,8 +285,9 @@ class Snapshot():
 			else:
 				max_node = self.AT[-1][1]
 
-		result = Snapshot.rcheck_node(max_node, t_min, t_max, [])
-		checked = [max_node.block.id]
+		# first check the acceptor block
+		checked = []
+		result = Snapshot.rcheck_node(max_node, t_min, t_max, checked)
 		if(max_node.parent_node):
 			result += Snapshot.rcheck_up(max_node, t_min, t_max, checked)
 		if(max_node.previous_node):
@@ -295,9 +301,9 @@ class Snapshot():
 	def rcheck_node(cls, node, t1, t2, checked):
 		t_interval = node.block.time_interval
 		result = []
-		if(Snapshot.overlap(t1, t2, t_interval)):
+		if(cls.overlap(t1, t2, t_interval)):
 			for re in node.block.record_list:
-				if(Snapshot.overlap(t1, t2,[re[1], re[2]])):
+				if(cls.overlap(t1, t2,[re[1], re[2]])):
 					result.append(re[0])
 		checked.append(node.block.id)
 		return result
@@ -312,7 +318,7 @@ class Snapshot():
 			result += cls.gocheck_up(node.parent_node, t1, t2, checked)
 		if(node.previous_node and node.previous_node.block.id not in checked):
 			t_interval = node.previous_node.time_interval
-			if(Snapshot.overlap(t1, t2, t_interval)):
+			if(cls.overlap(t1, t2, t_interval)):
 				result += cls.gocheck_left(node.previous_node, t1, t2, checked)
 		return result
 
@@ -323,13 +329,13 @@ class Snapshot():
 		# check the left sibling node:
 		if(node.previous_node and node.previous_node.block.id not in checked):
 			t_interval = node.previous_node.time_interval
-			if(Snapshot.overlap(t1, t2, t_interval)):
+			if(cls.overlap(t1, t2, t_interval)):
 				result += cls.gocheck_left(node.previous_node, t1, t2, checked)
 		if(node.Pce_node and node.Pce_node.block.id not in checked):
 			t_interval = node.Pce_node.time_interval
-			if(Snapshot.overlap(t1, t2, t_interval)):
+			if(cls.overlap(t1, t2, t_interval)):
 				result += cls.gocheck_down(node.Pce_node, t1, t2, checked)
-		return result		
+		return result
 
 
 	@classmethod
@@ -338,29 +344,31 @@ class Snapshot():
 		result += cls.check_node(node, t1, t2, checked)
 		if(node.previous_node and node.previous_node.block.id not in checked):
 			t_interval = node.previous_node.time_interval
-			if(Snapshot.overlap(t1, t2, t_interval)):
+			if(cls.overlap(t1, t2, t_interval)):
 				result += cls.gocheck_left(node.previous_node, t1, t2, checked)
 		if(node.Pce_node and node.Pce_node.block.id not in checked):
 			t_interval = node.Pce_node.time_interval
-			if(Snapshot.overlap(t1, t2, t_interval)):
+			if(cls.overlap(t1, t2, t_interval)):
 				result += cls.gocheck_down(node.Pce_node, t1, t2, checked)
-		return result		
+		return result
 	
 	@classmethod
-	def overlap(t1, t2, t_interval):
-		if(t_interval[1]=='*' and t_interval[0]<=t2):
-			return True
-		elif(t_interval[1] == '*' and t_interval[0]>t2):
+	def overlap(cls, t1, t2, t_interval):
+		if(t_interval[1]=='*'):
+			if(t_interval[0]<=t2):
+				return True
+			else:
+				return False
+		else:
+			if(t1>=t_interval[0] and t1<=t_interval[1]):
+				return True
+			elif(t2>=t_interval[0] and t2<=t_interval[1]):
+				return True
+			elif(t1<=t_interval[0] and t2>=t_interval[1]):
+				return True
+			elif(t1>=t_interval[0] and t2<=t_interval[1]):
+				return True
 			return False
-		if(t1>=t_interval[0] and t1<=t_interval[1]):
-			return True
-		elif(t2>=t_interval[0] and t2<=t_interval[1]):
-			return True
-		elif(t1<=t_interval[0] and t2>=t_interval[1]):
-			return True
-		elif(t1>=t_interval[0] and t2<=t_interval[1]):
-			return True
-		return False
 
 	# get the records with particular object id
 	# def keyq(self, oid):
