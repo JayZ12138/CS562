@@ -121,13 +121,14 @@ class Snapshot():
 
 	def insert(self, r):
 		if(self.acceptor.isfull):
+			# create new block with the new record
 			new_block = block(record=r)
 			self.blocks.insert(Node(blk=new_block))
 			# set the acceptor block to the newly inserted block
 			self.acceptor = self.blocks.last_node.block 
 			# append the (time, block) to the AT array
 			self.AT.append((r[1], self.blocks.last_node))
-			self.insert(r)
+			# self.acceptor.insert(r)
 		else:
 			self.acceptor.insert(r)
 		self.alives_entries[r[0]] = self.blocks.last_node
