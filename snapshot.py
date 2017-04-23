@@ -218,6 +218,24 @@ class Snapshot():
 		return result
 
 	@classmethod
+	def gocheck_down(cls, node, t, checked):
+		result = []
+		result += cls.check_node(node, t, checked)
+		if(node.previous_node and node.previous_node.block.id not in checked):
+			t_s, t_e = node.previous_node.time_interval
+			if(t_s<=t and t_e>=t):
+				result += cls.gocheck_left(node.previous_node, t, checked)
+		if(node.next_node and node.next_node.block.id not in checked):
+			t_s, t_e = node.next_node.time_interval
+			if(t_s<=t and t_e>=t):
+				result += cls.gocheck_right(node.next_node, t, checked)
+		if(node.Pce_node and node.Pce_node.block.id not in checked):
+			t_s, t_e = node.Pce_node.time_interval
+			if(t_s<=t and t_e>=t):
+				result += cls.gocheck_down(node.Pce_node, t, checked)
+		return result
+
+	@classmethod
 	def gocheck_left(cls, node, t, checked):
 		result = []
 		result += cls.check_node(node, t, checked)
@@ -247,23 +265,6 @@ class Snapshot():
 				result += cls.gocheck_down(node.Pce_node, t, checked)
 		return result
 
-	@classmethod
-	def gocheck_down(cls, node, t, checked):
-		result = []
-		result += cls.check_node(node, t, checked)
-		if(node.next_node and node.next_node.block.id not in checked):
-			t_s, t_e = node.next_node.time_interval
-			if(t_s<=t and t_e>=t):
-				result += cls.gocheck_right(node.next_node, t, checked)
-		if(node.previous_node and node.previous_node.block.id not in checked):
-			t_s, t_e = node.previous_node.time_interval
-			if(t_s<=t and t_e>=t):
-				result += cls.gocheck_left(node.previous_node, t, checked)
-		if(node.Pce_node and node.Pce_node.block.id not in checked):
-			t_s, t_e = node.Pce_node.time_interval
-			if(t_s<=t and t_e>=t):
-				result += cls.gocheck_down(node.Pce_node, t, checked)
-		return result
 	def rangeq(self, time_range):
 		pass
 
