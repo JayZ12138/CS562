@@ -21,43 +21,46 @@ class Linked_list():
 
 	def __init__(self):
 		# One double linked list
-		self.SP = Node()
+		sp_block = block(['SP', 0, '*'], c=1)
+		self.SP = Node(blk=sp_block)
 		self.last_node = self.SP
 			
 	# insert a new node
 	def insert(self, node):
 		assert isinstance(node, Node)
+		node.previous_node = self.last_node
 		self.last_node.next_node = node
-		self.last_node = self.last_node.next_node
+		self.last_node = node
+
 
 	# delete a node
 	def delete(self, node):
 		# n previous <-> n next
-		node.next_node.previous_node = node.previous_node
-		node.previous_node.next_node = node.next_node.previous_node
+		node.previous_node.next_node = node.next_node
 		# n parent -> n previous
 		node.parent_node = node.previous_node
 		# n's parent.last child -> n
-		if(node.parent_node.Pcs):
+		if(node.parent_node.Pce_node):
 			#check if there is existed child of parent node
-			node.parent_node.Pes_node.insert(node)
-			node.parent_node.Pes_node = node
+			node.previous_node = node.parent_node.Pce_node
+			node.parent_node.Pce_node.next_node = node
+			node.parent_node.Pce_node = node
 		else:          
 			node.parent_node.Pcs_node = node
-			node.parent_node.Pes_node = node
+			node.parent_node.Pce_node = node
 			node.previous_node = None
 			node.next_node = None
 
 
 class block():
 
-	def __init__(self, record, c=50, u=0.2):
+	def __init__(self, record, c=100, u=0.2):
 		# record is a list of[oid, start_time, end_time]
 		# add requisite here: there must be a record while creating 
 		# new block
 		# use a unique random id to represent the block
 		self.id = uuid1()
-		self.time_interval = [record[0], '*']
+		self.time_interval = [record[1], '*']
 		self.capacity = c
 		self.u = u
 		self.record_list = [record]
@@ -83,7 +86,7 @@ class block():
 			if(oid == record[0]):
 				record[2] = end_time
 				self.alive_record -= 1
-				if(self.ifull and self.alive_records<self.u*self.capacity):
+				if(self.isfull and self.alive_record<self.u*self.capacity):
 					self.isunderflow = True
 				return
 		# if no record is founed
@@ -151,7 +154,7 @@ class Snapshot():
 
 	def copy(self, records, time):
 		for record in records:
-			new_record = list(record[0], time, '*')
+			new_record = [record[0], time, '*']
 			# no need to create new node
 			self.insert(new_record)
 
@@ -194,7 +197,7 @@ class Snapshot():
 	def check_node(cls, node, t, checked=None):
 		result = []
 		t_s, t_e = node.block.time_interval
-		if(t_s>t or t_e <t):
+		if(t_e != '*' and (t_s>t or t_e <t)):
 			return result
 		for re in node.block.record_list:
 			if(re[2] == '*'):
@@ -216,7 +219,7 @@ class Snapshot():
 			# No need to check interval, as upper node is what we always need
 			result += cls.gocheck_up(node.parent_node, t, checked)
 		if(node.previous_node and node.previous_node.block.id not in checked):
-			t_s, t_e = node.previous_node.time_interval
+			t_s, t_e = node.previous_node.block.time_interval
 			if(t_s<=t and t_e>=t):
 				result += cls.gocheck_left(node.previous_node, t, checked)
 		return result
@@ -226,11 +229,11 @@ class Snapshot():
 		result = []
 		result += cls.check_node(node, t, checked)
 		if(node.previous_node and node.previous_node.block.id not in checked):
-			t_s, t_e = node.previous_node.time_interval
+			t_s, t_e = node.previous_node.block.time_interval
 			if(t_s<=t and t_e>=t):
 				result += cls.gocheck_left(node.previous_node, t, checked)
 		if(node.Pce_node and node.Pce_node.block.id not in checked):
-			t_s, t_e = node.Pce_node.time_interval
+			t_s, t_e = node.Pce_node.block.time_interval
 			if(t_s<=t and t_e>=t):
 				result += cls.gocheck_down(node.Pce_node, t, checked)
 		return result
@@ -241,11 +244,11 @@ class Snapshot():
 		result += cls.check_node(node, t, checked)
 		# check the left sibling node:
 		if(node.previous_node and node.previous_node.block.id not in checked):
-			t_s, t_e = node.previous_node.time_interval
+			t_s, t_e = node.previous_node.block.time_interval
 			if(t_s<=t and t_e>=t):
 				result += cls.gocheck_left(node.previous_node, t, checked)
 		if(node.Pce_node and node.Pce_node.block.id not in checked):
-			t_s, t_e = node.Pce_node.time_interval
+			t_s, t_e = node.Pce_node.block.time_interval
 			if(t_s<=t and t_e>=t):
 				result += cls.gocheck_down(node.Pce_node, t, checked)
 		return result
@@ -311,45 +314,45 @@ class Snapshot():
 	@classmethod
 	def rcheck_up(cls, node, t1, t2, checked):
 		result = []
-		result += cls.check_node(node, t1, t2, checked)
+		result += cls.rcheck_node(node, t1, t2, checked)
 		# if there is parent node, keep going up and checking
 		if(node.parent_node and node.parent_node.block.id not in checked):
 			# No need to check interval, as upper node is what we always need
-			result += cls.gocheck_up(node.parent_node, t1, t2, checked)
+			result += cls.rcheck_up(node.parent_node, t1, t2, checked)
 		if(node.previous_node and node.previous_node.block.id not in checked):
-			t_interval = node.previous_node.time_interval
+			t_interval = node.previous_node.block.time_interval
 			if(cls.overlap(t1, t2, t_interval)):
-				result += cls.gocheck_left(node.previous_node, t1, t2, checked)
+				result += cls.rcheck_left(node.previous_node, t1, t2, checked)
 		return result
 
 	classmethod
 	def rcheck_left(cls, node, t1, t2, checked):
 		result = []
-		result += cls.check_node(node, t1, t2, checked)
+		result += cls.rcheck_node(node, t1, t2, checked)
 		# check the left sibling node:
 		if(node.previous_node and node.previous_node.block.id not in checked):
-			t_interval = node.previous_node.time_interval
+			t_interval = node.previous_node.block.time_interval
 			if(cls.overlap(t1, t2, t_interval)):
-				result += cls.gocheck_left(node.previous_node, t1, t2, checked)
+				result += cls.rcheck_left(node.previous_node, t1, t2, checked)
 		if(node.Pce_node and node.Pce_node.block.id not in checked):
-			t_interval = node.Pce_node.time_interval
+			t_interval = node.Pce_node.block.time_interval
 			if(cls.overlap(t1, t2, t_interval)):
-				result += cls.gocheck_down(node.Pce_node, t1, t2, checked)
+				result += cls.rcheck_down(node.Pce_node, t1, t2, checked)
 		return result
 
 
 	@classmethod
 	def rcheck_down(cls, node, t1, t2, checked):
 		result = []
-		result += cls.check_node(node, t1, t2, checked)
+		result += cls.rcheck_node(node, t1, t2, checked)
 		if(node.previous_node and node.previous_node.block.id not in checked):
-			t_interval = node.previous_node.time_interval
+			t_interval = node.previous_node.block.time_interval
 			if(cls.overlap(t1, t2, t_interval)):
-				result += cls.gocheck_left(node.previous_node, t1, t2, checked)
+				result += cls.rcheck_left(node.previous_node, t1, t2, checked)
 		if(node.Pce_node and node.Pce_node.block.id not in checked):
-			t_interval = node.Pce_node.time_interval
+			t_interval = node.Pce_node.block.time_interval
 			if(cls.overlap(t1, t2, t_interval)):
-				result += cls.gocheck_down(node.Pce_node, t1, t2, checked)
+				result += cls.rcheck_down(node.Pce_node, t1, t2, checked)
 		return result
 	
 	@classmethod
@@ -373,6 +376,5 @@ class Snapshot():
 	# get the records with particular object id
 	# def keyq(self, oid):
 	# 	pass
-
 
 	
