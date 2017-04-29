@@ -37,6 +37,8 @@ class Linked_list():
 	def delete(self, node):
 		# n previous <-> n next
 		node.previous_node.next_node = node.next_node
+		if(node.next_node):
+			node.next_node.previous_node = node.previous_node
 		# n parent -> n previous
 		node.parent_node = node.previous_node
 		# n's parent.last child -> n
@@ -49,7 +51,7 @@ class Linked_list():
 			node.parent_node.Pcs_node = node
 			node.parent_node.Pce_node = node
 			node.previous_node = None
-			node.next_node = None
+		node.next_node = None
 
 
 class block():
@@ -106,16 +108,18 @@ class block():
 			for entry in self.record_list:
 				if(entry[2] == '*'):
 					entry[2] = end_time
+		else:
+			return 'Cannot delete block'
 
 
 
 class Snapshot():
 
 	# record format is [oid, start_time, end_time]
-	def __init__(self, r): # start by inserting an record
+	def __init__(self, r, cap=100, ut=0.2): # start by inserting an record
 		self.blocks = Linked_list()
 		# insert a new block and set it as acceptor
-		new_block = block(record=r)
+		new_block = block(record=r, c=cap, u=ut)
 		self.blocks.insert(Node(blk=new_block))
 		self.acceptor = self.blocks.last_node.block
 		# entry in AT array is in format (t, pointer_to_node_in_linkedlist)
@@ -163,7 +167,7 @@ class Snapshot():
 		cur_node = None
 		# get the acceptor block at the required time by the AT array
 		# want the largest t <= time
-		for i in range(len(self.AT)):
+		for i in range(len(self.AT)-1):
 			if(self.AT[i][0]<=time and self.AT[i+1][0]>time):
 				cur_node = self.AT[i][1]
 				break
@@ -220,7 +224,7 @@ class Snapshot():
 			result += cls.gocheck_up(node.parent_node, t, checked)
 		if(node.previous_node and node.previous_node.block.id not in checked):
 			t_s, t_e = node.previous_node.block.time_interval
-			if(t_s<=t and t_e>=t):
+			if(t_s<=t and t_e=='*' or t_s<=t and t_e>=t):
 				result += cls.gocheck_left(node.previous_node, t, checked)
 		return result
 
@@ -230,11 +234,11 @@ class Snapshot():
 		result += cls.check_node(node, t, checked)
 		if(node.previous_node and node.previous_node.block.id not in checked):
 			t_s, t_e = node.previous_node.block.time_interval
-			if(t_s<=t and t_e>=t):
+			if(t_s<=t and t_e=='*' or t_s<=t and t_e>=t):
 				result += cls.gocheck_left(node.previous_node, t, checked)
 		if(node.Pce_node and node.Pce_node.block.id not in checked):
 			t_s, t_e = node.Pce_node.block.time_interval
-			if(t_s<=t and t_e>=t):
+			if(t_s<=t and t_e=='*' or t_s<=t and t_e>=t):
 				result += cls.gocheck_down(node.Pce_node, t, checked)
 		return result
 
@@ -245,11 +249,11 @@ class Snapshot():
 		# check the left sibling node:
 		if(node.previous_node and node.previous_node.block.id not in checked):
 			t_s, t_e = node.previous_node.block.time_interval
-			if(t_s<=t and t_e>=t):
+			if(t_s<=t and t_e=='*' or t_s<=t and t_e>=t):
 				result += cls.gocheck_left(node.previous_node, t, checked)
 		if(node.Pce_node and node.Pce_node.block.id not in checked):
 			t_s, t_e = node.Pce_node.block.time_interval
-			if(t_s<=t and t_e>=t):
+			if(t_s<=t and t_e=='*' or t_s<=t and t_e>=t):
 				result += cls.gocheck_down(node.Pce_node, t, checked)
 		return result
 
@@ -277,7 +281,7 @@ class Snapshot():
 		# checking process starts from the t_max to t_min, ease the process
 		# get the acceptor block of t_max from AT array
 		max_node = None
-		for i in range(len(self.AT)):
+		for i in range(len(self.AT)-1):
 			if(self.AT[i][0]<=t_max and self.AT[i+1][0]>t_max):
 				max_node = self.AT[i][1]
 				break
@@ -290,13 +294,13 @@ class Snapshot():
 
 		# first check the acceptor block
 		checked = []
-		result = Snapshot.rcheck_node(max_node, t_min, t_max, checked)
+		result = Snapshot.rcheck_node(max_node, t_min, t_max,checked)
 		if(max_node.parent_node):
-			result += Snapshot.rcheck_up(max_node, t_min, t_max, checked)
+			result += Snapshot.rcheck_up(max_node.parent_node, t_min, t_max,checked)
 		if(max_node.previous_node):
-			result += Snapshot.rcheck_left(max_node, t_min, t_max, checked)
+			result += Snapshot.rcheck_left(max_node.previous_node, t_min, t_max, checked)
 		if(max_node.Pce_node):
-			result += Snapshot.rcheck_down(max_node, t_min, t_max, checked)
+			result += Snapshot.rcheck_down(max_node.Pce_node, t_min, t_max, checked)
 		result = set(result)
 		return result
 
@@ -325,7 +329,7 @@ class Snapshot():
 				result += cls.rcheck_left(node.previous_node, t1, t2, checked)
 		return result
 
-	classmethod
+	@classmethod
 	def rcheck_left(cls, node, t1, t2, checked):
 		result = []
 		result += cls.rcheck_node(node, t1, t2, checked)
