@@ -37,7 +37,7 @@ class SnapshotTest(unittest.TestCase):
 
 	def test_block_init(self):
 		#initialize with record [id, start_time, end_time]
-		record = ['idhere', 1, 10]
+		record = ['idhere', 1, '*']
 		b = block(record)
 		self.assertIsInstance(b, block)
 
