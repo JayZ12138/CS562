@@ -2,18 +2,21 @@ from snapshot import Snapshot
 import sys
 import time
 
+CAPACITY=2000
+UTILIZE=0.2
+
 def main():
 	fname = 'snapshot_test.txt'
 	print('Start reading and indexing file...')
 	start = time.time()
 	with open(fname, 'r') as f:
 		line = f.readline().split()
-		Sindex = Snapshot([line[1], int(line[0]), '*'])
+		Sindex = Snapshot([line[1], int(line[0]), '*'], cap=CAPACITY, ut=UTILIZE)
 		for l in f:
 			line = l.split()
 			op = line[2]
 			if(op == 'b'):
-				Sindex.insert([line[1], int(line[0]), '*'])
+				Sindex.insert([line[1], int(line[0]), '*'], cap=CAPACITY, ut=UTILIZE)
 			elif(op == 'd'):
 				Sindex.delete(line[1], int(line[0]))
 	duration = time.time() - start

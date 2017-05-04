@@ -127,10 +127,10 @@ class Snapshot():
 		# record all alive entries, formart is {oid, pointer_to_node_in_linkedlist}
 		self.alives_entries = {r[0]:self.blocks.last_node}
 
-	def insert(self, r):
+	def insert(self, r, cap=100, ut=0.2):
 		if(self.acceptor.isfull):
 			# create new block with the new record
-			new_block = block(record=r)
+			new_block = block(record=r, c=cap, u=ut)
 			self.blocks.insert(Node(blk=new_block))
 			# set the acceptor block to the newly inserted block
 			self.acceptor = self.blocks.last_node.block 
