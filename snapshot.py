@@ -1,4 +1,6 @@
 from uuid import uuid1
+
+
 class Node():
 
 	def __init__(self, parent_node=None, next_node=None, previous_node=None,

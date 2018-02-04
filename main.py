@@ -1,4 +1,5 @@
 from snapshot import Snapshot
+from tqdm import tqdm
 import sys
 import time
 
@@ -10,6 +11,7 @@ def main():
 	print('Start reading and indexing file...')
 	start = time.time()
 	with open(fname, 'r') as f:
+		pbar = tqdm(total=2377471)
 		line = f.readline().split()
 		Sindex = Snapshot([line[1], int(line[0]), '*'], cap=CAPACITY, ut=UTILIZE)
 		for l in f:
@@ -19,6 +21,7 @@ def main():
 				Sindex.insert([line[1], int(line[0]), '*'], cap=CAPACITY, ut=UTILIZE)
 			elif(op == 'd'):
 				Sindex.delete(line[1], int(line[0]))
+			pbar.update(1)
 	duration = time.time() - start
 	print('')
 	print('Index done in: {0:.2f}s '.format(duration))
